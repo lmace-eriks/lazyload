@@ -1,0 +1,6 @@
+{
+  "lazyload": {
+    "component": "LazyLoad",
+    "composition": "children"
+  }
+}
