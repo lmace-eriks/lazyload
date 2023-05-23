@@ -1,13 +1,11 @@
 import React, { useEffect, useState, ReactChildren, useRef } from "react";
-import { canUseDOM } from "vtex.render-runtime";
-// import { createPortal } from "react-dom";
 
 import styles from "./styles.css";
 
 interface LazyLoadProps {
-  id: string
   loadingMessage: string
   loadingAnimation: string
+  fadeIn: boolean
   buttonText: string
   boundingBox: string
   threshold: number
@@ -16,25 +14,26 @@ interface LazyLoadProps {
   children: ReactChildren
 }
 
-const LazyLoad: StorefrontFunctionComponent<LazyLoadProps> = ({ id, loadingMessage, loadingAnimation, buttonText, boundingBox, threshold, height, blockClass, children }) => {
+const LazyLoad: StorefrontFunctionComponent<LazyLoadProps> = ({ loadingMessage, loadingAnimation, fadeIn, buttonText, boundingBox, threshold, height, blockClass, children }) => {
   const [showChildren, setShowChildren] = useState(false);
+  const targetElement = useRef<any>();
 
   // Create / Destroy Intersection Observer
   useEffect(() => {
-    if (!canUseDOM || buttonText) return;
-
-    const div: HTMLElement = document.getElementById(id)!;
-    if (!div) return;
+    if (showChildren || buttonText) return;
 
     const observer: IntersectionObserver = new IntersectionObserver(entries => {
       const entry: IntersectionObserverEntry = entries[0];
-      setShowChildren(entry.isIntersecting);
+      if (entry.isIntersecting) {
+        setShowChildren(true);
+        observer.unobserve(targetElement.current);
+      }
     }, { threshold: parseThreshold(), rootMargin: boundingBox || `0px` });
 
-    observer.observe(div);
+    observer.observe(targetElement.current);
 
     return () => {
-      observer.unobserve(div);
+      if (targetElement.current) observer.unobserve(targetElement.current);
     }
   });
 
@@ -46,7 +45,7 @@ const LazyLoad: StorefrontFunctionComponent<LazyLoadProps> = ({ id, loadingMessa
   }
 
   const TriggerDiv = () => (
-    <div id={id} className={`${styles.container}--${blockClass}`} style={{ height: height }}>
+    <div ref={targetElement} className={`${styles.container}--${blockClass}`} style={{ height: height, display: showChildren ? `none` : `block` }}>
       {buttonText && <ClickToLoad />}
       {loadingMessage && !buttonText && <ScrollToLoad />}
     </div>
@@ -66,7 +65,7 @@ const LazyLoad: StorefrontFunctionComponent<LazyLoadProps> = ({ id, loadingMessa
 
   const SpinnerAnim = () => (
     <svg className={styles.spinner} viewBox="0 0 50 50">
-      <circle className={styles.path} cx="25" cy="25" r="20" fill="none" stroke-width="5"></circle>
+      <circle className={styles.path} cx="25" cy="25" r="20" fill="none" strokeWidth="5"></circle>
     </svg>
   )
 
@@ -74,18 +73,23 @@ const LazyLoad: StorefrontFunctionComponent<LazyLoadProps> = ({ id, loadingMessa
     <div className={styles.bounce}>▼</div>
   )
 
-  return showChildren ? <>{children}</> : <TriggerDiv />
+  const FadeIn = () => (
+    <div className={`${styles.fadeIn}--${blockClass}`}>
+      {children}
+    </div>
+  )
+
+  return (<>
+    <TriggerDiv />
+    {showChildren ? fadeIn ? <FadeIn /> : <>{children}</> : <></>}
+  </>)
+
 }
 
 LazyLoad.schema = {
   title: "Lazy Load",
   type: "object",
   properties: {
-    id: {
-      title: "Unique ID Name",
-      description: "Required | Unique name for the component. Must start with a letter. Only use Alphanumeric characters and the hyphen. Example: related-products-trigger",
-      type: "string"
-    },
     loadingMessage: {
       title: "Loading Message",
       description: "Optional | Scroll loading only. Will not display if Button Text is filled out. Text to display before children content has been requested. Example: Keep Scrolling To Load Content...",

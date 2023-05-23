@@ -12,6 +12,14 @@
 
 .bounce {}
 
+.fadeIn {
+}
+
+@keyframes fadeInAnim {
+    0% {opacity: 0;}
+    100% {opacity: 100%;}
+}
+
 @keyframes rotate {
     100% {
         transform: rotate(360deg);
